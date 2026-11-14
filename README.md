@@ -73,3 +73,7 @@ To always show the tab row, delete the block commented *"Safari hides the tab ro
 ## Uninstall
 
 Delete `chrome/userChrome.css` and `chrome/userContent.css` from your profile (or restore the `.bak-*` copies), and remove the `// >>> safari-glass >>>` block from `user.js`.
+
+## License
+
+[MIT](LICENSE) — use it, fork it, remix it.
