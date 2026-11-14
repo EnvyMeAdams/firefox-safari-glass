@@ -1,0 +1,298 @@
+/* ==========================================================================
+   Safari Glass — dark, see-through, Safari-style layout for Firefox
+   Built for Hyprland: Firefox paints translucent, Hyprland blurs behind it.
+   Layout:  [toolbar: sidebar · back · fwd ·  ( centered URL field )  · dl · +]
+            [tabs:    equal-width centered tabs, close button on hover, left]
+   ========================================================================== */
+
+/* ---------- Tweakables ---------- */
+:root {
+  --sg-tint:        rgba(16, 16, 20, 0.52);   /* window glass — raise alpha for less see-through */
+  --sg-popup:       rgba(30, 30, 34, 0.88);   /* menus / panels / URL dropdown */
+  --sg-field:       rgba(255, 255, 255, 0.07);
+  --sg-field-hover: rgba(255, 255, 255, 0.11);
+  --sg-tab-active:  rgba(255, 255, 255, 0.12);
+  --sg-tab-hover:   rgba(255, 255, 255, 0.05);
+  --sg-border:      rgba(255, 255, 255, 0.09);
+  --sg-text:        rgba(255, 255, 255, 0.92);
+  --sg-text-dim:    rgba(255, 255, 255, 0.55);
+  --sg-accent:      #0a84ff;                  /* Safari blue */
+  --sg-radius:      10px;
+  --sg-url-width:   680px;
+}
+
+/* ---------- Feed the glass into Firefox's own theme variables ---------- */
+:root {
+  --toolbar-bgcolor: transparent !important;
+  --toolbar-color: var(--sg-text) !important;
+  --toolbox-bgcolor: transparent !important;
+  --toolbox-bgcolor-inactive: transparent !important;
+  --lwt-accent-color: transparent !important;
+  --lwt-accent-color-inactive: transparent !important;
+  --lwt-text-color: var(--sg-text) !important;
+  --tabpanel-background-color: transparent !important;
+  --chrome-content-separator-color: transparent !important;
+  --sidebar-background-color: transparent !important;
+  --sidebar-text-color: var(--sg-text) !important;
+
+  --toolbar-field-background-color: var(--sg-field) !important;
+  --toolbar-field-focus-background-color: var(--sg-popup) !important;
+  --toolbar-field-color: var(--sg-text) !important;
+  --toolbar-field-focus-color: var(--sg-text) !important;
+  --toolbar-field-border-color: var(--sg-border) !important;
+  --toolbar-field-focus-border-color: var(--sg-accent) !important;
+  --urlbar-box-bgcolor: var(--sg-field) !important;
+  --urlbar-box-hover-bgcolor: var(--sg-field-hover) !important;
+
+  --toolbarbutton-border-radius: 8px !important;
+  --toolbarbutton-hover-background: rgba(255, 255, 255, 0.08) !important;
+  --toolbarbutton-active-background: rgba(255, 255, 255, 0.14) !important;
+
+  --tab-selected-bgcolor: var(--sg-tab-active) !important;
+  --tab-border-radius: 8px !important;
+  --tab-min-height: 28px !important;
+
+  --arrowpanel-background: var(--sg-popup) !important;
+  --arrowpanel-color: var(--sg-text) !important;
+  --arrowpanel-border-color: var(--sg-border) !important;
+  --arrowpanel-border-radius: 12px !important;
+  --panel-background: var(--sg-popup) !important;
+  --panel-color: var(--sg-text) !important;
+  --panel-border-color: var(--sg-border) !important;
+
+  --focus-outline-color: var(--sg-accent) !important;
+}
+
+/* ---------- Make the window itself see-through ---------- */
+/* One tint on the root; everything stacked on top stays transparent so the
+   glass reads as a single sheet (like Safari) instead of layered bands.     */
+:root, #main-window {
+  background: var(--sg-tint) !important;
+  background-image: none !important;
+}
+body,
+#navigator-toolbox,
+#titlebar,
+#nav-bar,
+#TabsToolbar,
+#PersonalToolbar,
+#browser,
+#tabbrowser-tabbox,
+#tabbrowser-tabpanels,
+.browserContainer,
+.browserStack,
+#sidebar-box,
+#sidebar-main,
+#sidebar-header,
+findbar {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Hairline under the chrome, like Safari's toolbar separator */
+#navigator-toolbox {
+  border-bottom: 1px solid var(--sg-border) !important;
+}
+#nav-bar, #TabsToolbar, #PersonalToolbar {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ---------- Layout: toolbar on top, tabs underneath (Safari order) ---------- */
+#navigator-toolbox {
+  display: flex !important;
+  flex-direction: column !important;
+}
+#nav-bar          { order: 1 !important; }
+#titlebar         { order: 2 !important; }   /* holds the tab strip */
+#PersonalToolbar  { order: 3 !important; }
+
+/* No min/max/close buttons — Hyprland handles windows */
+.titlebar-buttonbox-container,
+.titlebar-spacer {
+  display: none !important;
+}
+
+/* ---------- Toolbar ---------- */
+#nav-bar {
+  padding: 6px 10px !important;
+}
+#nav-bar toolbarbutton {
+  color: var(--sg-text-dim) !important;
+}
+#nav-bar toolbarbutton:hover {
+  color: var(--sg-text) !important;
+}
+
+/* ---------- URL field: centered, rounded, compact ---------- */
+#urlbar-container {
+  flex: 0 1 var(--sg-url-width) !important;
+  min-width: 260px !important;
+  margin-inline: auto !important;
+}
+#urlbar-background {
+  border-radius: var(--sg-radius) !important;
+  border: 1px solid var(--sg-border) !important;
+  box-shadow: none !important;
+}
+#urlbar:not([focused]):hover > #urlbar-background {
+  background-color: var(--sg-field-hover) !important;
+}
+#urlbar[focused] > #urlbar-background {
+  border-color: var(--sg-accent) !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.35) !important;
+  outline: none !important;
+}
+
+/* Centered address text when idle, left-aligned while typing (Safari) */
+#urlbar:not([focused]) :is(#urlbar-input, .urlbar-input) {
+  text-align: center !important;
+}
+
+/* Quieter field: drop the "Not secure"/site-name label */
+#identity-icon-label {
+  display: none !important;
+}
+
+/* Page-action icons only appear on hover or focus */
+#urlbar:not(:hover):not([focused]) #page-action-buttons > :not(#star-button-box):not(#reader-mode-button),
+#urlbar:not(:hover):not([focused]) #tracking-protection-icon-container {
+  opacity: 0 !important;
+  transition: opacity 120ms ease !important;
+}
+
+/* Dropdown results: glass panel with rounded corners */
+.urlbarView {
+  border-radius: 0 0 var(--sg-radius) var(--sg-radius) !important;
+}
+.urlbarView-row[selected] {
+  background-color: rgba(10, 132, 255, 0.85) !important;
+  border-radius: 8px !important;
+}
+
+/* ---------- Tabs: equal width, centered titles, close on hover ---------- */
+#TabsToolbar {
+  padding: 0 10px 6px !important;
+  min-height: 0 !important;
+}
+#tabbrowser-tabs {
+  border-inline-start: none !important;
+  padding-inline-start: 0 !important;
+  min-height: 0 !important;
+}
+
+/* Tabs share the row evenly, like Safari */
+.tabbrowser-tab:not([pinned]) {
+  flex: 1 1 0 !important;
+  max-width: none !important;
+  min-width: 96px !important;
+}
+.tabbrowser-tab {
+  padding-inline: 2px !important;
+}
+.tabbrowser-tab::before,
+.tabbrowser-tab::after {
+  display: none !important;   /* no separators */
+}
+
+.tab-background {
+  margin-block: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border: 1px solid transparent !important;
+  transition: background-color 120ms ease !important;
+}
+.tabbrowser-tab:hover:not([selected]) .tab-background {
+  background-color: var(--sg-tab-hover) !important;
+}
+.tabbrowser-tab:is([selected], [visuallyselected], [multiselected]) .tab-background {
+  background-color: var(--sg-tab-active) !important;
+  border-color: var(--sg-border) !important;
+}
+
+.tab-content {
+  position: relative !important;
+  justify-content: center !important;
+  padding-inline: 26px !important;
+}
+.tabbrowser-tab[pinned] .tab-content {
+  padding-inline: 10px !important;
+}
+.tab-label-container {
+  flex: 0 1 auto !important;
+}
+.tab-label {
+  color: var(--sg-text-dim) !important;
+  font-size: 12px !important;
+}
+.tabbrowser-tab:is([selected], [visuallyselected]) .tab-label {
+  color: var(--sg-text) !important;
+}
+
+/* Close button sits on the left and only shows on hover */
+.tab-close-button {
+  position: absolute !important;
+  inset-inline-start: 6px !important;
+  width: 18px !important;
+  height: 18px !important;
+  padding: 3px !important;
+  border-radius: 5px !important;
+  opacity: 0 !important;
+  transition: opacity 100ms ease !important;
+}
+.tabbrowser-tab:hover .tab-close-button {
+  opacity: 1 !important;
+}
+.tab-close-button:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Safari hides the tab row when only one tab is open.
+   Delete this block if you'd rather always see it. */
+:root:not([customizing]) #TabsToolbar:not(:has(.tabbrowser-tab:not([hidden]) ~ .tabbrowser-tab:not([hidden]))) {
+  visibility: collapse !important;
+}
+
+/* ---------- Bookmarks bar ---------- */
+#PersonalToolbar {
+  padding: 0 10px 4px !important;
+}
+#PersonalToolbar toolbarbutton.bookmark-item {
+  border-radius: 6px !important;
+  color: var(--sg-text-dim) !important;
+}
+
+/* ---------- Sidebar ---------- */
+#sidebar-box,
+#sidebar-main {
+  border-inline-end: 1px solid var(--sg-border) !important;
+}
+#sidebar-splitter {
+  border: none !important;
+  background: transparent !important;
+  width: 1px !important;
+}
+
+/* ---------- Menus & popups ---------- */
+menupopup,
+panel {
+  --panel-border-radius: 12px !important;
+  --panel-padding: 5px !important;
+}
+menupopup menuitem,
+menupopup menu {
+  border-radius: 6px !important;
+}
+menupopup menuitem[_moz-menuactive],
+menupopup menu[_moz-menuactive] {
+  background-color: var(--sg-accent) !important;
+  color: #fff !important;
+}
+
+/* ---------- Find bar ---------- */
+findbar {
+  border-top: 1px solid var(--sg-border) !important;
+}

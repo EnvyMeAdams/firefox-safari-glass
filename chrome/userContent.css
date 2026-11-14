@@ -1,0 +1,30 @@
+/* Safari Glass — internal pages
+   Websites keep their own backgrounds (so text stays readable).
+   Only the new-tab/home/blank pages go see-through, like Safari's start page. */
+
+@-moz-document url("about:newtab"), url("about:home"), url("about:blank"), url("about:privatebrowsing") {
+  html, body, main, .outer-wrapper, .non-collapsible-section {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+
+  /* Glassy search box */
+  .search-wrapper input,
+  .search-handoff-button {
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    color: rgba(255, 255, 255, 0.92) !important;
+  }
+
+  /* Shortcut tiles */
+  .top-site-outer .tile {
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+  }
+  .top-site-outer:hover .tile {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+  }
+}
