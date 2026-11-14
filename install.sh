@@ -77,18 +77,76 @@ bases() {
 procs()      { case $1 in firefox) echo "firefox firefox-bin firefox-esr" ;; librewolf) echo "librewolf librewolf-bin" ;; esac; }
 flatpak_id() { case $1 in firefox) echo org.mozilla.firefox ;; librewolf) echo io.gitlab.librewolf-community ;; esac; }
 
+is_browser_exe() {        # does this executable belong to browser $1?
+  local base=${2##*/} n
+  base=${base% (deleted)}
+  for n in $(procs "$1"); do [[ $base == "$n" ]] && return 0; done
+  return 1
+}
+
+browser_pids() {          # every process of this browser, matched by its executable
+  local b=$1 pid exe     # (Firefox often renames its main process "MainThread",
+  for pid in $(pgrep -u "$UID" .); do      #  so matching by name misses it)
+    exe=$(readlink "/proc/$pid/exe" 2>/dev/null) || continue
+    is_browser_exe "$b" "$exe" && echo "$pid"
+  done
+  return 0
+}
+
+main_pid() {              # the browser process whose parent isn't the browser
+  local b=$1 pid ppid exe
+  for pid in $(browser_pids "$b"); do
+    ppid=$(awk '/^PPid:/ { print $2 }' "/proc/$pid/status" 2>/dev/null) || continue
+    exe=$(readlink "/proc/$ppid/exe" 2>/dev/null || true)
+    is_browser_exe "$b" "$exe" || { echo "$pid"; return 0; }
+  done
+  return 1
+}
+
+running_profile() {       # ask the running browser which profile it has open
+  local pid fd target
+  pid=$(main_pid "$1") || return 1
+  for fd in /proc/"$pid"/fd/*; do
+    target=$(readlink "$fd" 2>/dev/null) || continue
+    if [[ $target == */places.sqlite ]]; then
+      target=${target%/places.sqlite}
+      [[ -d $target ]] && { echo "$target"; return 0; }
+    fi
+  done
+  return 1
+}
+
+ini_profile() {           # default profile according to installs.ini / profiles.ini
+  local base=$1 ini rel
+  for ini in "$base/installs.ini" "$base/profiles.ini"; do
+    [[ -f $ini ]] || continue
+    # [Install…] sections: Default=<path>
+    rel=$(awk -F= '/^Default=/ && $2 != "1" { print $2; exit }' "$ini")
+    # [Profile…] sections: the one marked Default=1, else the first one
+    [[ -n $rel ]] || rel=$(awk '
+      function flush() { if (path != "") { if (def && d == "") d = path; if (f == "") f = path }; path = ""; def = 0 }
+      /^\[/        { flush() }
+      /^Path=/     { path = substr($0, 6) }
+      /^Default=1/ { def = 1 }
+      END          { flush(); print (d != "" ? d : f) }' "$ini")
+    [[ -n $rel ]] || continue
+    [[ $rel == /* ]] || rel="$base/$rel"
+    [[ -d $rel ]] && { echo "$rel"; return 0; }
+  done
+  return 1
+}
+
 find_profile() {
-  local base ini rel
+  local b=$1 base p
+  running_profile "$b" && return 0
   while read -r base; do
-    for ini in "$base/installs.ini" "$base/profiles.ini"; do
-      [[ -f $ini ]] || continue
-      # first Default= that's a path (profiles.ini also has Default=1 flags)
-      rel=$(awk -F= '/^Default=/ && $2 != "1" { print $2; exit }' "$ini")
-      [[ -n $rel ]] || continue
-      [[ $rel == /* ]] || rel="$base/$rel"
-      [[ -d $rel ]] && { echo "$rel"; return 0; }
-    done
-  done < <(bases "$1")
+    [[ -d $base ]] || continue
+    ini_profile "$base" && return 0
+    # no usable ini: take the most recently used profile folder
+    # shellcheck disable=SC2012  # profile folder names are safe
+    p=$(ls -1td "$base"/*/prefs.js 2>/dev/null | head -1 || true)
+    [[ -n $p ]] && { echo "${p%/prefs.js}"; return 0; }
+  done < <(bases "$b")
   return 1
 }
 
@@ -99,17 +157,8 @@ launch_cmd() {            # how to reopen this browser later
   return 0
 }
 
-main_pid() {              # oldest matching process = the parent browser process
-  local n pid
-  for n in $(procs "$1"); do
-    pid=$(pgrep -o -u "$UID" -x "$n" || true)
-    [[ -n $pid ]] && { echo "$pid"; return 0; }
-  done
-  return 1
-}
-
 close_browser() {         # returns 0 if it was running and is now closed
-  local b=$1 pid i n
+  local b=$1 pid i
   pid=$(main_pid "$b") || return 1
   say "Closing $b — your tabs will come back"
   kill -TERM "$pid" 2>/dev/null || true
@@ -118,7 +167,8 @@ close_browser() {         # returns 0 if it was running and is now closed
     sleep 0.5
   done
   warn "$b didn't close within 15s, forcing it"
-  for n in $(procs "$b"); do pkill -KILL -u "$UID" -x "$n" 2>/dev/null || true; done
+  # shellcheck disable=SC2046
+  kill -KILL $(browser_pids "$b") 2>/dev/null || true
   sleep 1
   return 0
 }
@@ -183,7 +233,11 @@ else
     if p=$(find_profile "$b"); then targets+=("$b|$p"); fi
   done
 fi
-((${#targets[@]})) || die "No Firefox or LibreWolf profile found. Open the browser once so it makes one, then run this again."
+if ((${#targets[@]} == 0)); then
+  warn "No Firefox or LibreWolf profile found. Looked in:"
+  for b in firefox librewolf; do bases "$b"; done | sed 's/^/     /' >&2
+  die "Open about:profiles, copy the 'Root Directory' in use, and run: install.sh --profile <that folder>"
+fi
 
 # ---------- do it ----------
 reopen=()
