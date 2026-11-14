@@ -104,8 +104,10 @@ findbar {
   display: flex !important;
   flex-direction: column !important;
 }
+#toolbar-menubar  { order: 0 !important; }
 #nav-bar          { order: 1 !important; }
-#titlebar         { order: 2 !important; }   /* holds the tab strip */
+#TabsToolbar      { order: 2 !important; }   /* direct child of the toolbox in current Firefox */
+#titlebar         { order: 2 !important; }   /* older Firefox wrapped the tab strip in this */
 #PersonalToolbar  { order: 3 !important; }
 
 /* No min/max/close buttons — Hyprland handles windows */
@@ -174,6 +176,7 @@ findbar {
 /* ---------- Tabs: equal width, centered titles, close on hover ---------- */
 #TabsToolbar {
   padding: 0 10px 6px !important;
+  --tabs-navbar-separator-style: none !important;   /* no line between toolbar and tabs */
   min-height: 0 !important;
 }
 #tabbrowser-tabs {
@@ -182,11 +185,14 @@ findbar {
   min-height: 0 !important;
 }
 
-/* Tabs share the row evenly, like Safari */
-.tabbrowser-tab:not([pinned]) {
+/* Tabs share the row evenly, like Safari.
+   Only for live tabs ([fadein]) — a closing tab loses [fadein] and Firefox
+   shrinks it to 0.1px before removing it. Overriding that leaves invisible,
+   unclickable ghost tabs. max-width is a length (not "none") so the closing
+   transition can still run and fire its transitionend. */
+.tabbrowser-tab[fadein]:not([pinned]) {
   flex: 1 1 0 !important;
-  max-width: none !important;
-  min-width: 96px !important;
+  max-width: 100vw !important;
 }
 .tabbrowser-tab {
   padding-inline: 2px !important;
