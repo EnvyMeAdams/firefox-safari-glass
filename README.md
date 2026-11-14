@@ -13,19 +13,40 @@ Firefox paints its window translucent; your compositor blurs whatever is behind 
 
 ## Install
 
-Quit Firefox completely, then:
+One command — works with **Firefox** and **LibreWolf**:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/EnvyMeAdams/firefox-safari-glass/main/install.sh | bash
+```
+
+That's it. The script:
+- finds the default profile of every Firefox / LibreWolf it can see (native installs and Flatpak, old `~/.mozilla` / `~/.librewolf` and newer `~/.config` locations)
+- closes the browser if it's running and **brings your tabs back** when it reopens
+- keeps your own CSS (restored on uninstall) and **merges** into an existing `user.js` instead of replacing it (arkenfox etc. stay intact)
+- reopens the browser
+
+Re-run the same command any time to update.
+
+Prefer to read it first? Clone and run it locally:
 
 ```sh
 git clone https://github.com/EnvyMeAdams/firefox-safari-glass.git
 cd firefox-safari-glass
-./install.sh                 # auto-detects your default profile
-./install.sh /path/to/profile  # or point it at one (see about:profiles)
+./install.sh --help
 ```
 
-The installer:
-- finds the profile in `~/.config/mozilla/firefox` (Firefox 147+) or `~/.mozilla/firefox`
-- backs up any existing `userChrome.css` / `userContent.css`
-- **merges** its prefs into an existing `user.js` (arkenfox etc. stay intact) inside a marked block, so re-running it is safe
+| Option | |
+|---|---|
+| `-b, --browser firefox\|librewolf\|all` | only install into one browser (default: all found) |
+| `-p, --profile PATH` | use a specific profile folder (see `about:profiles`) |
+| `--no-restart` | close the browser if needed, but don't reopen it |
+| `-u, --uninstall` | remove the theme and reset the prefs it changed |
+
+With the curl one-liner, pass options after `bash -s --`, e.g. `... | bash -s -- --browser librewolf`.
+
+### LibreWolf note
+
+LibreWolf turns on fingerprinting protection by default, which makes websites think you're in light mode. The browser UI is still dark glass; only page content is affected. If you want dark websites too, use the Dark Reader extension rather than turning the protection off.
 
 ## Compositor
 
@@ -72,7 +93,11 @@ To always show the tab row, delete the block commented *"Safari hides the tab ro
 
 ## Uninstall
 
-Delete `chrome/userChrome.css` and `chrome/userContent.css` from your profile (or restore the `.bak-*` copies), and remove the `// >>> safari-glass >>>` block from `user.js`.
+```sh
+curl -fsSL https://raw.githubusercontent.com/EnvyMeAdams/firefox-safari-glass/main/install.sh | bash -s -- --uninstall
+```
+
+Puts back any CSS you had before, removes the `user.js` block, and resets the prefs the theme set.
 
 ## License
 
